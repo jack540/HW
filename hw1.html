@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+body {
+	overflow: hidden
+}
+div {
+	position: absolute;
+	top: 9%;
+	width: 100%;
+	font-size:30px;
+	padding:10px;
+	text-align: center;
+	color: #ffff00
+}
+#toggle{
+	position: absolute;
+	top: 18%;
+	left: 40%;
+	width:150px;
+	height:60px;
+	font-size:20px;
+}
+#analog{
+	position: absolute;
+	top: 18%;
+	left: 53%;
+	width:150px;
+	height:60px;
+	font-size:20px;
+}
+</style>
+</head>
+
+<body>
+
+<div>Homework 1 I3B13 李泰逸</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/107/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://raw.githack.com/jyunming-chen/tutsplus/master/js/KeyboardState.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+
+<button id="toggle">Toggle Turn</button>
+<button id="analog">General</button>
+
+<script>
+var turn = false, ch1 = true, ch2 = true;
+var renderer, scene, camera;
+var controls, cube1, cube2, cube3, circle, cone, circle2;
+var angle = 0, i = 0;  // initialization IMPORTANT!
+
+$("#toggle").click(function(){
+	turn = !turn;
+	if(turn)
+		$("#toggle").text('stop');
+	else
+		$("#toggle").text('turn');
+});
+
+$("#analog").click(function(){	//1tt	
+	if(ch1 && ch2){
+		$("#analog").text('Interval');
+		ch1 = false;	//1ft
+	}
+	else if(ch1 && !ch2){
+		$("#analog").text('Interval');
+		ch1 = false; ch2 = true;	//1ft
+	}
+	else if(!ch1 && ch2){
+		$("#analog").text('Sector');
+		ch2 = false;	//2ff
+	}
+	else if(!ch1 && !ch2){
+		$("#analog").text('General');
+		ch1 = true;		//3tf
+	}
+});
+
+init();
+animate();
+
+function init () {
+	
+	renderer = new THREE.WebGLRenderer();
+	document.body.appendChild (renderer.domElement); //將渲染器的 DOM 綁到網頁上
+	var width = window.innerWidth;
+	var height = window.innerHeight;
+	renderer.setSize (width, height); //場景大小
+	renderer.setClearColor (0x888888); //背景顏色
+	
+	scene = new THREE.Scene();
+	var grid = new THREE.GridHelper(20,20, 0xaaaa00, 0x333333);
+	scene.add (grid);
+	var axes = new THREE.AxisHelper (5);
+	scene.add (axes);
+	
+	camera = new THREE.PerspectiveCamera (35, width/height, 1, 100);
+	//(fov視野, aspect畫面寬高比, near, far)透視投影
+	camera.position.y = 16;
+	camera.position.z = 40;
+	camera.lookAt (new THREE.Vector3(0,0,0));
+	
+	controls = new THREE.OrbitControls(camera, renderer.domElement); //一個能讓滑鼠能操作camera的class
+	
+	window.addEventListener('resize', onWindowResize, false); //視窗大小改變,讓程式適當調整
+	///////////////////////////////////////////////////////////////
+	/*var cubeGeometry = new THREE.BoxGeometry (1,1,1);  //boxGeometry(width, height, depth)
+	var cubeMaterial = new THREE.MeshNormalMaterial({color: 0x00ff00});
+	cube1 = new THREE.Mesh (cubeGeometry, cubeMaterial);
+	cube1.position.set(0,6,0);
+	scene.add (cube1);*/
+	
+	var geometry = new THREE.BoxGeometry( 1, 1, 1 ); //幾何體
+	var material = new THREE.MeshBasicMaterial( {color:'black'} ); //材質
+	cube1 = new THREE.Mesh( geometry, material ); //建立網格物件
+	cube1.position.set(3,3,0);
+	scene.add (cube1);
+	
+	var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+	var material = new THREE.MeshBasicMaterial( {color:'black'} );
+	cube2 = new THREE.Mesh( geometry, material );
+	cube2.position.set(-3,3,0);
+	scene.add (cube2);
+	
+	var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+	var material = new THREE.MeshBasicMaterial( {color:'#BB5500'} );
+	cube3 = new THREE.Mesh( geometry, material );
+	cube3.position.set(0,-6,0);
+	scene.add( cube3 );	
+
+	var geometry = new THREE.CircleGeometry( 7, 32 );
+	var material = new THREE.MeshBasicMaterial( {color:'#FFCC22', side:THREE.DoubleSide} );
+	circle = new THREE.Mesh( geometry, material );
+	
+	var geometry = new THREE.ConeGeometry( 2.0, 10, 3 );
+	var material = new THREE.MeshBasicMaterial( {color:'#FF0000'} );
+	cone = new THREE.Mesh( geometry, material );
+	cone.position.set(0,0,1);
+	scene.add( cone );
+	
+	var geometry = new THREE.CircleGeometry( 7, 32, Math.PI*1/2, 0);
+	var material = new THREE.MeshBasicMaterial( {color:'#FFCC22', side:THREE.DoubleSide} );
+	circle2 = new THREE.Mesh( geometry, material );
+	circle2.rotation.y = Math.PI;
+}
+
+function onWindowResize() {	//視窗大小改變,讓程式適當調整
+  
+	var width = window.innerWidth;
+  var height = window.innerHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+	
+}
+
+function animate() {
+	
+	scene.add( circle );
+	
+	if(turn && ch1 && ch2||turn && !ch1 && ch2){		//1tt or 1ft
+		scene.remove( circle2 );
+		angle -= Math.PI*2/60/60;	
+		cone.rotation.z = angle;	//自轉(PI=180度)
+		//cube.position.set (8(半徑)*Math.cos(angle), 0.5, -8*Math.sin(angle));	//公轉
+		//cylinder.rotation.x = Math.PI/2 + angle;
+	}
+	
+	else if(!turn && ch1 && ch2||!turn && !ch1 && ch2){
+		scene.remove( circle2 );
+	}
+	
+	else if(turn && !ch1 && !ch2){	//2ff
+		angle -= Math.PI*2/60/60;
+		if(-i*(Math.PI/30) >= angle){
+			cone.rotation.z = angle;
+			i++;
+		}
+	}
+	
+	else if(turn && ch1 && !ch2){	//3tf
+		scene.remove( circle );
+		let nowLength = circle2.geometry.parameters.thetaLength;
+		let geometry = new THREE.CircleGeometry(7, 32, Math.PI*1/2, nowLength+Math.PI*2/60/60);
+		scene.remove( circle2 );
+		circle2 = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color:'#FFCC22', side:THREE.DoubleSide}));
+		circle2.rotation.y = Math.PI;
+		scene.add( circle2 );	
+	}
+	
+	else if(!turn && ch1 && !ch2){
+		scene.add( circle2 );
+		scene.remove( circle );
+	}
+	
+	controls.update();
+	requestAnimationFrame(animate);
+	render();
+}
+
+function render() {
+	
+	renderer.render(scene, camera);
+	
+}
+
+</script>
+</body>
+
+</html>
