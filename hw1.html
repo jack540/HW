@@ -91,10 +91,10 @@ function init () {
 	renderer.setClearColor (0x888888); //背景顏色
 	
 	scene = new THREE.Scene();
-	var grid = new THREE.GridHelper(20,20, 0xaaaa00, 0x333333);
-	scene.add (grid);
-	var axes = new THREE.AxisHelper (5);
-	scene.add (axes);
+	//var grid = new THREE.GridHelper(20,20, 0xaaaa00, 0x333333);
+	//scene.add (grid);網格
+	//var axes = new THREE.AxisHelper (5);
+	//scene.add (axes);XYZ軸
 	
 	camera = new THREE.PerspectiveCamera (35, width/height, 1, 100);
 	//(fov視野, aspect畫面寬高比, near, far)透視投影
@@ -114,7 +114,7 @@ function init () {
 	
 	var geometry = new THREE.BoxGeometry( 1, 1, 1 ); //幾何體
 	var material = new THREE.MeshBasicMaterial( {color:'black'} ); //材質
-	cube1 = new THREE.Mesh( geometry, material ); //建立網格物件
+	cube1 = new THREE.Mesh( geometry, material );
 	cube1.position.set(3,3,0);
 	scene.add (cube1);
 	
