@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body> 
+	<script src="https://threejs.org/build/three.min.js"></script>
+	<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+	<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
+	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
+	<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.min.js"></script>
+	
+<script>
+var camera, camera3rd, scene, renderer;
+var Car = new THREE.Object3D();
+var keyboard = new KeyboardState();
+var WW = window.innerWidth ;
+var HH = window.innerHeight ;
+var controls;
+var modelName = "myCar";
+var stats;
+var speed = 0, angle = 0, clock;
+var vel = new THREE.Vector3();
+var force = new THREE.Vector3();
+var pos = new THREE.Vector3();
+
+
+(function() {
+		Math.clamp = function(val,min,max){
+		return Math.min(Math.max(val,min),max);
+	}})();
+
+init();
+animate();
+
+function init() {
+
+  container = document.createElement('div');
+  document.body.appendChild(container);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(WW, HH);
+  container.appendChild(renderer.domElement);
+  renderer.setClearColor ('#DDDDDD');
+
+  camera3rd = new THREE.PerspectiveCamera(75, WW / HH, 1, 2000);
+  camera3rd.position.y = 100;
+  
+  camera = new THREE.PerspectiveCamera(75, WW / HH, 1, 2000);
+  camera.position.set(-30, 50, 0);
+  renderer.autoClear = false;
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls = new THREE.OrbitControls(camera3rd, renderer.domElement);
+
+  scene = new THREE.Scene();
+  clock = new THREE.Clock();
+	
+  gridxz = new THREE.GridHelper (400, 20,'red','black');
+  scene.add (gridxz);
+
+  //let axis = new THREE.AxesHelper (20);
+  //scene.add (axis);
+  	
+  var directionalLight = new THREE.DirectionalLight(0xffffff);//平行光
+  directionalLight.position.set(0, 0, 1).normalize();
+  scene.add(directionalLight);
+
+  var pointLight = new THREE.PointLight (0xffffff);//點光源
+  pointLight.position.set (100,200,-100);
+  scene.add (pointLight);
+	
+//////////////////////////////////////////////////////////////////	
+	
+  window.addEventListener('resize', onWindowResize, false);
+ 
+	  stats = new Stats();
+	  stats.domElement.style.position = 'absolute';
+	  stats.domElement.style.top = '0px';
+	  stats.domElement.style.left = '0px';
+	  stats.domElement.style.zIndex = 100;
+	  document.body.appendChild(stats.domElement);
+
+	function onWindowResize() {
+
+	  camera.aspect = WW / HH;
+	  camera.updateProjectionMatrix();
+	  
+	  camera3rd.aspect = WW / HH;
+	  camera3rd.updateProjectionMatrix();
+	  
+	  renderer.setSize(WW, HH);
+
+	}
+    readModel('myCar', 40);
+  
+    let geometry = new THREE.BoxGeometry( 5, 30, 5 );
+	let material = new THREE.MeshBasicMaterial( {color:'black'} );
+			
+	let cube1 = new THREE.Mesh( geometry, material );
+	cube1.position.set(50,15,50);
+	scene.add (cube1);
+			
+	let cube2 = new THREE.Mesh( geometry, material );
+	cube2.position.set(50,15,-50);
+	scene.add (cube2);
+		  
+	let cube3 = new THREE.Mesh( geometry, material );
+	cube3.position.set(-50,15,50);
+	scene.add (cube3);
+		  
+	let cube4 = new THREE.Mesh( geometry, material );
+	cube4.position.set(-50,15,-50);
+	scene.add (cube4);
+	
+	/*let loader = new THREE.TextureLoader()
+    loader.crossOrigin = '';
+
+    texture = loader.load('https://i.imgur.com/bv24XBd.jpg?1');
+
+    texture.repeat.set(3, 3);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+	
+	mesh = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshBasicMaterial({map: texture}))
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+    */
+}
+
+function updateSize() {
+	  if ( WW != window.innerWidth || HH != window.innerHeight ) {
+	    WW  = window.innerWidth;
+	    HH = window.innerHeight;
+	    renderer.setSize ( WW, HH );
+	  }
+	}
+
+function readModel (modelName, targetSize = 40) {
+
+  var onProgress = function(xhr) {
+    if (xhr.lengthComputable) {
+      var percentComplete = xhr.loaded / xhr.total * 100;
+      console.log(Math.round(percentComplete, 2) + '% downloaded');
+    }
+  };
+
+  var onError = function(xhr) {};
+
+  var mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath('models/');
+  mtlLoader.load(modelName+'.mtl', function(materials) {
+
+    materials.preload();
+
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath('models/');
+    objLoader.load(modelName+'.obj', function(object) {
+		
+	Car.add (unitize (object, 20));
+	scene.add (Car);
+		
+    }, onProgress, onError);
+  });
+}
+
+function unitize (object, targetSize) {  
+	
+	var box3 = new THREE.Box3();
+	box3.setFromObject (object);
+	var size = new THREE.Vector3();
+	size.subVectors (box3.max, box3.min);
+	var center = new THREE.Vector3();
+	center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+	
+	console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
+	console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
+	
+	var objSize = Math.max (size.x, size.y, size.z);
+	var scaleSet = targetSize/objSize;
+				
+	var theObject =  new THREE.Object3D();
+	theObject.add (object);
+	object.scale.set (scaleSet, scaleSet, scaleSet);
+	object.position.set (-center.x*scaleSet, -center.y*scaleSet, -center.z*scaleSet);
+	theObject.rotation.y = Math.PI/2;
+	return theObject;
+}
+
+function animate() {
+
+	  stats.update();
+	  keyboard.update();
+	  controls.update();
+
+	  var dt = clock.getDelta();
+
+	  if ( keyboard.down("W") || keyboard.pressed("W") ) 
+	  speed += 1;
+	  if ( keyboard.down("S") || keyboard.pressed("S") ) 
+	  speed -= 1;  
+	  if ( keyboard.down("A") || keyboard.pressed("A") ) 
+	  angle += 0.03;
+	  if ( keyboard.down("D") || keyboard.pressed("D") ) 
+	  angle -= 0.03;
+	    
+	  speed = Math.clamp (speed, -20, 50.0);//限制speed最大最小範圍
+	  vel = new THREE.Vector3(speed,0,0);
+
+	  vel.applyAxisAngle (new THREE.Vector3(0,1,0), angle);
+	  //Applies a rotation specified by an axis and an angle to this vector. 
+	  pos.add (vel.clone().multiplyScalar(dt));//乘標量(dt)
+
+	  Car.position.copy(pos);
+	  Car.rotation.y = angle;
+
+	  var cameraset1 = Car.localToWorld (new THREE.Vector3(-20,10,0));//第三人稱視角
+	  camera3rd.position.copy(cameraset1);
+	  camera3rd.lookAt(Car.position);
+	  
+	  var cameraset2 = Car.localToWorld (new THREE.Vector3(0,50,0));//上帝視角
+	  camera.position.copy(cameraset2);
+	  camera.lookAt(Car.position);//相機看向的位置
+	  camera.up.z = 1;//相機以Z軸為上方
+
+	  updateSize();//子母畫面
+	  requestAnimationFrame(animate);
+	  renderer.setViewport(0, 0, WW, HH);//defult
+	  renderer.clear();
+
+	  camera3rd.aspect = (WW/2) / HH;//canvas的顯示比例
+	  camera3rd.updateProjectionMatrix();
+	  //Updates the camera projection matrix. Must be called after any change of parameters. 
+	  renderer.setViewport(0, 0, 0.5*WW, HH);
+	  renderer.render(scene, camera3rd);
+
+	  camera.aspect = (WW/2) / HH;
+	  camera.updateProjectionMatrix();
+	  renderer.setViewport(WW/2, 0, 0.5*WW, HH);
+	  renderer.render(scene, camera);
+	  
+
+}
+
+</script>
+</body>
+
+</html>
