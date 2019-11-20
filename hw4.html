@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body> 
+	<script src="https://threejs.org/build/three.min.js"></script>
+	<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+
+	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
+	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
+	
+<script>
+
+class Button {
+    constructor(color, name) {
+      this.on = false;
+      this.hsl = color.getHSL();
+      this.obj = this.makeButton(name);
+    }
+
+    toggle() {
+      this.on = !this.on;
+     }
+
+    makeButton(name) {
+      let mesh = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 2, 32),new THREE.MeshBasicMaterial());
+      let button = new THREE.Object3D();
+      button.add(mesh);
+      mesh.material.color.setHSL (this.hsl.h, this.hsl.s, this.hsl.l)
+      button.name = name;
+      return button;
+    }
+  }
+
+var camera, scene, renderer;
+var Lamp = new THREE.Object3D();
+var modelName = "lamp";
+var Pencil = new THREE.Object3D();
+var modelName = "pencil";
+var Chair = new THREE.Object3D();
+var modelName = "chair";
+var Cabinet = new THREE.Object3D();
+var modelName = "cabinet";
+
+
+
+var roomlight, lamplight, light;
+var lampButton, roomButton, button;
+var mouse = new THREE.Vector2();
+var raycaster = new THREE.Raycaster();
+var pickables = [];
+var toggleLamp = false;
+var toggleRoom = false;
+
+init();
+animate();
+
+function init() {
+
+  scene = new THREE.Scene();
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.z = 50;
+  camera.position.y = 200;
+  let controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  ////////////////////////////////////////////////////////////////
+	
+	var geometry = new THREE.CylinderGeometry( 3, 2, 30, 32 );
+	var mat = new THREE.MeshLambertMaterial( {color: 'brown'} );
+	var material = new THREE.MeshLambertMaterial( {color: 0xffff00} );	
+	
+	//桌子
+	var base = new THREE.Object3D();
+	var deskMesh = new THREE.Mesh (new THREE.BoxGeometry (60,2,60), mat);
+	base.add (deskMesh);
+	deskMesh.position.set (0,30,-50);
+	deskMesh.castShadow = true
+	deskMesh.receiveShadow = true
+	scene.add(base);
+	
+	//桌子角柱
+	var cylinder1 = new THREE.Mesh( geometry, material );
+	cylinder1.position.set (20,-15,20);
+	deskMesh.add( cylinder1 );
+	var cylinder2 = new THREE.Mesh( geometry, material );
+	cylinder2.position.set (-20,-15,20);
+	deskMesh.add( cylinder2 );
+	var cylinder3 = new THREE.Mesh( geometry, material );
+	cylinder3.position.set (20,-15,-20);
+	deskMesh.add( cylinder3 );
+	var cylinder4 = new THREE.Mesh( geometry, material );
+	cylinder4.position.set (-20,-15,-20);
+	deskMesh.add( cylinder4 );
+	
+	
+	let loader = new THREE.TextureLoader();
+	loader.crossOrigin = '';
+	texture = loader.load('https://i.imgur.com/FxWCYDP.jpg');
+	alpha = loader.load('https://i.imgur.com/29r3otw.png');//簍空圖案
+  
+	var texMat = new THREE.MeshLambertMaterial({
+    map: texture,
+	alphaMap: alpha,
+    transparent: true,
+    side: THREE.DoubleSide
+	});
+	
+	//筆筒
+	var geometry = new THREE.CylinderGeometry( 3, 3, 15, 35, 1, true);
+	var cylinder = new THREE.Mesh( geometry, texMat );
+	cylinder.position.set(0,38,-65);
+  
+  
+	scene.add( cylinder );//筆筒
+	scene.add (buildModel());//純喫茶
+	
+	readModel1('lamp', 40);
+	readModel2('pencil', 40);
+	readModel3('chair', 40);
+	readModel4('cabinet', 40);//櫃子
+    
+	
+	//牆面
+    var wallTexture = loader.load('https://i.imgur.com/8XAzExW.jpg');
+    var wall_negz = new THREE.Mesh(new THREE.PlaneGeometry(300, 100, 100, 100), new THREE.MeshLambertMaterial({
+      map: wallTexture
+    }));
+    wall_negz.position.y = 50;
+    var wall_posx = wall_negz.clone();
+    var wall_negx = wall_negz.clone();
+    wall_negz.position.z = -150;
+    wall_negx.position.x = -150;
+    wall_negx.rotation.y = Math.PI / 2;
+    wall_posx.position.x = 150;
+    wall_posx.rotation.y = -Math.PI / 2;
+    scene.add(wall_negz);
+    scene.add(wall_negx);
+    scene.add(wall_posx);	
+	
+	
+	
+    // 地板
+    let loader1 = new THREE.TextureLoader();
+    loader1.setCrossOrigin ('');
+    var Texture = loader1.load('https://i.imgur.com/i8CSCF0.jpg');
+    Texture.wrapS = THREE.RepeatWrapping;
+    Texture.wrapT = THREE.RepeatWrapping;
+    Texture.repeat.set(2, 2);
+    var floor = new THREE.Mesh(new THREE.PlaneGeometry(300, 300, 140, 140), new THREE.MeshLambertMaterial({
+      map: Texture,
+      side: THREE.DoubleSide
+    }));
+    floor.rotation.x = Math.PI / 2;
+    scene.add(floor);
+  
+  
+  
+  //Light
+  var light1 = new THREE.AmbientLight( 0xffffff, 0.5);
+  light1.position.set( 0, 100, 0 );
+  scene.add( light1 );
+  
+  // roomLight
+  roomLight = new THREE.SpotLight(0xffffff,1);
+  roomLight.position.set(30, 200, 30);
+  roomLight.penumbra = 1;
+  roomLight.castShadow = true;
+  roomLight.shadow.mapSize.width = 1024;
+  roomLight.shadow.mapSize.height = 1024;
+  roomLight.shadow.camera.near = 10;
+  roomLight.shadow.camera.far = 200;
+  roomLight.shadow.camera.fov = 50;
+  scene.add(roomLight);
+  
+  
+  // lamplight
+  light = new THREE.SpotLight(0xffffff, 1);
+  light.position.set(-18,49,-68);
+  light.angle = Math.PI/3;
+  light.penumbra = 0;
+  light.distance = 200;
+  light.decay = 1;
+  scene.add(light);
+  
+  
+  // lamplight shadow map settings
+  light.castShadow = false;
+  light.shadow.mapSize.width = 1024;
+  light.shadow.mapSize.height = 1024;
+  light.shadow.camera.near = 10;
+  light.shadow.camera.far = 200;
+  light.shadow.camera.fov = light.angle / Math.PI * 180 * 2;
+	
+  // roomLight shadow map settings
+  roomLight.castShadow = false;
+  roomLight.shadow.mapSize.width = 1024;
+  roomLight.shadow.mapSize.height = 1024;
+  roomLight.shadow.camera.near = 10;
+  roomLight.shadow.camera.far = 200;
+  roomLight.shadow.camera.fov = roomLight.angle / Math.PI * 180 * 2;
+	
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+
+  cylinder.castShadow = true
+  cylinder.receiveShadow = true
+  floor.receiveShadow = true;
+  
+  //輔助燈光
+  slhelper = new THREE.SpotLightHelper (roomLight);
+  lschelper = new THREE.CameraHelper(roomLight.shadow.camera)  
+  //scene.add (slhelper)
+  //scene.add(lschelper);
+  
+  
+  lampButton = new Button(new THREE.Color ('#66FFFF'), 'lampButton');
+  scene.add(lampButton.obj);
+  lampButton.obj.position.set(-21, 31, -60);
+  pickables.push(lampButton.obj);
+	
+  roomButton = new Button(new THREE.Color ('#FFFF12'), 'roomButton');
+  scene.add(roomButton.obj);
+  roomButton.obj.position.set(150, 45, -25);
+  roomButton.obj.rotation.z = Math.PI/2;
+  pickables.push(roomButton.obj);
+
+  document.addEventListener('mousedown', onDocumentMouseDown, false)
+}
+
+
+function onDocumentMouseDown(event) {	//點到時觸發
+    event.preventDefault();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    var intersects = raycaster.intersectObjects(pickables, true);
+    if (intersects.length > 0) {
+      
+	  let picked = intersects[0].object.parent.name;
+	  switch (picked) {
+	  
+		case 'lampButton':
+        lampButton.toggle();
+        toggleLamp = ! toggleLamp;
+        break;
+		
+        case 'roomButton':
+        roomButton.toggle();
+        toggleRoom = ! toggleRoom;
+        break;
+		
+      }
+    }
+  }
+
+function readModel1 (modelName, targetSize) {
+
+  var onProgress = function(xhr) {
+    if (xhr.lengthComputable) {
+      var percentComplete = xhr.loaded / xhr.total * 100;
+      console.log(Math.round(percentComplete, 2) + '% downloaded');
+    }
+  };
+
+  var onError = function(xhr) {};
+
+  var mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath('models/');
+  
+  mtlLoader.load(modelName+'.mtl', function(materials) {
+
+    materials.preload();
+
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath('models/');
+    objLoader.load(modelName+'.obj', function(object) {
+		
+	Lamp.add (unitize (object, 30));
+	Lamp.position.set(-20,43,-70);
+	Lamp.rotation.y = Math.PI*5/3;
+	Lamp.traverse (	//模型影子
+         function (mesh) {
+            if (mesh instanceof THREE.Mesh) {
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;}
+		 }
+    );
+	scene.add (Lamp);	
+
+		
+    }, onProgress, onError);
+  });
+}
+
+function readModel2 (modelName, targetSize) {
+
+  var onProgress = function(xhr) {
+    if (xhr.lengthComputable) {
+      var percentComplete = xhr.loaded / xhr.total * 100;
+      console.log(Math.round(percentComplete, 2) + '% downloaded');
+    }
+  };
+
+  var onError = function(xhr) {};
+
+  var mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath('models/');
+  
+  mtlLoader.load(modelName+'.mtl', function(materials) {
+
+    materials.preload();
+
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath('models/');
+    objLoader.load(modelName+'.obj', function(object) {
+		
+	Pencil.add (unitize (object, 20));
+	scene.add (Pencil);
+	Pencil.position.set(-1,40,-65);
+	Pencil.rotation.z = Math.PI/18;
+
+		
+    }, onProgress, onError);
+  });
+}
+
+function readModel3 (modelName, targetSize) {
+
+  var onProgress = function(xhr) {
+    if (xhr.lengthComputable) {
+      var percentComplete = xhr.loaded / xhr.total * 100;
+      console.log(Math.round(percentComplete, 2) + '% downloaded');
+    }
+  };
+
+  var onError = function(xhr) {};
+
+  var mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath('models/');
+  
+  mtlLoader.load(modelName+'.mtl', function(materials) {
+
+    materials.preload();
+
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath('models/');
+    objLoader.load(modelName+'.obj', function(object) {
+		
+	Chair.add (unitize (object, 50));//可改模型大小
+	Chair.traverse (	//模型影子
+         function (mesh) {
+            if (mesh instanceof THREE.Mesh) {
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;}
+		 }
+     );
+	Chair.position.set(0,25,0);
+	Chair.rotation.z = Math.PI/2;
+	Chair.rotation.y = Math.PI;
+	scene.add (Chair);
+	
+    }, onProgress, onError);
+  });
+}
+
+
+function readModel4 (modelName, targetSize) {
+
+  var onProgress = function(xhr) {
+    if (xhr.lengthComputable) {
+      var percentComplete = xhr.loaded / xhr.total * 100;
+      console.log(Math.round(percentComplete, 2) + '% downloaded');
+    }
+  };
+
+  var onError = function(xhr) {};
+
+  var mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath('models/');
+  
+  mtlLoader.load(modelName+'.mtl', function(materials) {
+
+    materials.preload();
+
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath('models/');
+    objLoader.load(modelName+'.obj', function(object) {
+		
+	Cabinet.add (unitize (object, 80));
+	Cabinet.position.set(-140,30,-70);
+	Cabinet.rotation.y = Math.PI;
+	Cabinet.traverse (
+         function (mesh) {
+            if (mesh instanceof THREE.Mesh) {
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;}
+		 }
+    );
+	scene.add (Cabinet);	
+
+		
+    }, onProgress, onError);
+  });
+}
+
+function unitize (object, targetSize) {  
+	
+	var box3 = new THREE.Box3();
+	box3.setFromObject (object);
+	var size = new THREE.Vector3();
+	size.subVectors (box3.max, box3.min);
+	var center = new THREE.Vector3();
+	center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+	
+	console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
+	console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
+	
+	var objSize = Math.max (size.x, size.y, size.z);
+	var scaleSet = targetSize/objSize;
+				
+	var theObject =  new THREE.Object3D();
+	theObject.add (object);
+	object.scale.set (scaleSet, scaleSet, scaleSet);
+	object.position.set (-center.x*scaleSet, -center.y*scaleSet, -center.z*scaleSet);
+	theObject.rotation.y = Math.PI/2;
+	return theObject;
+}
+
+function buildModel() {
+	let geometry = new THREE.Geometry();
+	let sq11 = Math.sqrt(11);
+  geometry.vertices.push ( new THREE.Vector3(-5, 0, 5) );//0
+  geometry.vertices.push ( new THREE.Vector3( 5, 0, 5) );//1
+  geometry.vertices.push ( new THREE.Vector3( 5,12, 5) );//2
+  geometry.vertices.push ( new THREE.Vector3( 5, 12+sq11, 0) );//3
+  geometry.vertices.push ( new THREE.Vector3(-5, 12+sq11, 0) );//4
+  geometry.vertices.push ( new THREE.Vector3(-5, 12, 5) );//5
+  geometry.vertices.push ( new THREE.Vector3( 5, 12, -5) );//6
+  geometry.vertices.push ( new THREE.Vector3(-5, 12, -5) );//7
+  geometry.vertices.push ( new THREE.Vector3(-5, 0, -5) );//8
+  geometry.vertices.push ( new THREE.Vector3( 5, 0, -5) );//9
+  geometry.vertices.push ( new THREE.Vector3( 5, 17, 0) );//10
+  geometry.vertices.push ( new THREE.Vector3(-5, 17, 0) );//11
+  geometry.vertices.push ( new THREE.Vector3(-3, 13, 0) );//12
+  geometry.vertices.push ( new THREE.Vector3( 3, 13, 0) );//13
+  
+  let face;
+  face = new THREE.Face3 ( 0, 1, 2 ); face.materialIndex = 0;//正面
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 0, 2, 5 ); face.materialIndex = 0;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 2, 3, 5 ); face.materialIndex = 3;//上面
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 3, 4, 5 ); face.materialIndex = 3;
+  geometry.faces.push (face);
+
+  face = new THREE.Face3 ( 0, 5, 7 ); face.materialIndex = 1;//左側
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 0, 7, 8 ); face.materialIndex = 1;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 1, 9, 6 ); face.materialIndex = 2;//右側
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 1, 6, 2 ); face.materialIndex = 2;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 8, 7, 6 ); face.materialIndex = 0;//後面
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 8, 6, 9 ); face.materialIndex = 0;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 7, 4, 3 ); face.materialIndex = 3;//上面
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 7, 3, 6 ); face.materialIndex = 3;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 3, 10, 11 ); face.materialIndex = 4;
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 3, 11, 4 ); face.materialIndex = 4;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 4, 11, 10 ); face.materialIndex = 4;
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 4, 10, 3 ); face.materialIndex = 4;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 5, 4, 12 ); face.materialIndex = 6;//左邊內側
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 12, 4, 7 ); face.materialIndex = 5;
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 5, 12, 7 ); face.materialIndex = 7;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 13, 3, 2 ); face.materialIndex = 8;//右邊內側
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 6, 3, 13 ); face.materialIndex = 9;
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 6, 13, 2 ); face.materialIndex = 10;
+  geometry.faces.push (face);
+  
+  face = new THREE.Face3 ( 9, 1, 0 ); face.materialIndex = 0;//底面
+  geometry.faces.push (face);
+  face = new THREE.Face3 ( 9, 0, 8 ); face.materialIndex = 0;
+  geometry.faces.push (face);
+
+
+
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);	//圖成像
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,0) ]);	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,1), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);//左內側,圖印上去要再改
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,1), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,1), new THREE.Vector2(0.5,0.5), new THREE.Vector2(0,0) ]);
+	
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,1), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);//右內側,圖印上去要再改
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,1), new THREE.Vector2(0.5,0.5), new THREE.Vector2(0,0) ]);
+
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+	geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);
+  
+  geometry.computeFaceNormals();
+  geometry.computeVertexNormals();
+  
+  let loader = new THREE.TextureLoader();
+  loader.crossOrigin = '';
+  
+  var materialArray = [];
+  
+  materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/efa7InI.jpg')}));//正面
+  materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/xwhtEGl.jpg')}));//側面
+  materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/gMR5acL.jpg')}));//側面
+  materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/cYSPRsc.jpg')}));//上面
+  materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/UBUz4ig.jpg')}));//最上面
+  materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/SqN8gqv.jpg')}));//左內側
+  materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/zXjVmdg.jpg')}));//左內側
+    materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/ikTMlTl.jpg')}));//左內側
+   materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/xz3ABQJ.jpg')}));//右內側
+  materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/Oe7WndV.jpg')}));//右內側
+    materialArray.push (new THREE.MeshLambertMaterial ({
+  map: loader.load ('https://i.imgur.com/pqsnuLC.jpg')}));//右內側
+  
+  
+  
+  
+  
+  let box = new THREE.Mesh (geometry, materialArray);
+  box.position.set(20,30,-45);
+  box.castShadow = true
+  box.receiveShadow = true
+  return box;
+}
+
+function animate() {
+  
+  if(toggleLamp){
+	light.intensity = 3;
+	light.castShadow = true;
+  } else{
+	light.intensity = 0;
+	light.castShadow = false;
+  }
+  if(toggleRoom){
+	roomLight.intensity = 2;
+	roomLight.castShadow = true;
+  } else{
+	roomLight.intensity = 0;
+	roomLight.castShadow = false;
+  }
+  
+  requestAnimationFrame(animate);
+  render();
+
+}
+
+function render() {
+
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</body>
+
+</html>

@@ -114,20 +114,7 @@ function init() {
 	let cube4 = new THREE.Mesh( geometry, material );
 	cube4.position.set(-50,15,-50);
 	scene.add (cube4);
-	
-	/*let loader = new THREE.TextureLoader()
-    loader.crossOrigin = '';
 
-    texture = loader.load('https://i.imgur.com/bv24XBd.jpg?1');
-
-    texture.repeat.set(3, 3);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-	
-	mesh = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshBasicMaterial({map: texture}))
-    mesh.rotation.x = -Math.PI / 2;
-    scene.add(mesh);
-    */
 }
 
 function updateSize() {
