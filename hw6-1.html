@@ -120,7 +120,7 @@ function init() {
     antialias: true
   });
   renderer.setSize(width, height);
-  document.body.appendChild(renderer.domElement);
+  document.body.appendChild(renderer.domElement); //將渲染元素加入 body
   renderer.setClearColor(0x888888);
   
   renderer.autoClear = false;
@@ -194,7 +194,7 @@ function init() {
 	//scene.add (buildModel());//純喫茶
 	
 	readModel1('lamp', 40);
-	readModel2('pencil', 40);
+	//readModel2('pencil', 40);
 	readModel3('chair', 40);
 	readModel4('cabinet', 40);//櫃子
     
@@ -230,14 +230,9 @@ function init() {
       side: THREE.DoubleSide
     }));
     floor.rotation.x = Math.PI / 2;
-	
-	
-	let box = buildModel();
-	sceneGrey.add (floor, cylinder, box, wall_negz, wall_negx, wall_posx, base);
-	
-	
-	
-	
+
+
+
     sceneColor = new THREE.Scene(); //茶壺放這
 	sceneColor.add (bulidTeapot());
   
@@ -254,6 +249,11 @@ function init() {
     sceneColor.add (new THREE.PointLightHelper (light,5))
     sceneGrey.add (light2);
 	
+	
+	let box = buildModel();
+	
+	sceneGrey.add (floor, cylinder, wall_negz, wall_negx, wall_posx, base, box);
+
 
 	
  ////////////////////////////////////////////////////////////////////////
@@ -287,7 +287,8 @@ function init() {
   scene0.add (plane0);
   plane0.position.set (width/2, height/2, 0);
   
-  console.log(sceneGrey);
+
+
   
 }
 
@@ -312,8 +313,7 @@ function bulidTeapot() {
 			vertexShader: document.getElementById('myVertexShader').textContent,
 			fragmentShader: document.getElementById('myFragmentShader').textContent
 		});
-		
-	 　 let mesh = new THREE.Mesh(new THREE.TeapotBufferGeometry(10),  teapotMaterial);
+		let mesh = new THREE.Mesh(new THREE.TeapotBufferGeometry(10),  teapotMaterial);
 	    mesh.position.set(-8,40,-33);
 		return mesh;
 		
@@ -359,7 +359,7 @@ function readModel1 (modelName, targetSize) {
   });
 }
 
-function readModel2 (modelName, targetSize) {
+/*function readModel2 (modelName, targetSize) {
 
   var onProgress = function(xhr) {
     if (xhr.lengthComputable) {
@@ -383,14 +383,21 @@ function readModel2 (modelName, targetSize) {
     objLoader.load(modelName+'.obj', function(object) {
 		
 	Pencil.add (unitize (object, 20));
-	sceneGrey.add (Pencil);
 	Pencil.position.set(-1,40,-65);
 	Pencil.rotation.z = Math.PI/18;
+	Pencil.traverse (	//模型影子
+         function (mesh) {
+            if (mesh instanceof THREE.Mesh) {
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;}
+		 }
+    );
+	sceneGrey.add (Pencil);	
 
 		
     }, onProgress, onError);
   });
-}
+}*/
 
 function readModel3 (modelName, targetSize) {
 
@@ -632,20 +639,22 @@ function buildModel() {
   map: loader.load ('https://i.imgur.com/SqN8gqv.jpg')}));//左內側
   materialArray.push (new THREE.MeshLambertMaterial ({
   map: loader.load ('https://i.imgur.com/zXjVmdg.jpg')}));//左內側
-    materialArray.push (new THREE.MeshLambertMaterial ({
+  materialArray.push (new THREE.MeshLambertMaterial ({
   map: loader.load ('https://i.imgur.com/ikTMlTl.jpg')}));//左內側
-   materialArray.push (new THREE.MeshLambertMaterial ({
+  materialArray.push (new THREE.MeshLambertMaterial ({
   map: loader.load ('https://i.imgur.com/xz3ABQJ.jpg')}));//右內側
   materialArray.push (new THREE.MeshLambertMaterial ({
   map: loader.load ('https://i.imgur.com/Oe7WndV.jpg')}));//右內側
-    materialArray.push (new THREE.MeshLambertMaterial ({
+  materialArray.push (new THREE.MeshLambertMaterial ({
   map: loader.load ('https://i.imgur.com/pqsnuLC.jpg')}));//右內側
   
   
   let box = new THREE.Mesh (geometry, materialArray);
   box.position.set(20,30,-45);
+  box.name = "box";
   //box.castShadow = true
   //box.receiveShadow = true
+
   return box;
 }
 
