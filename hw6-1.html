@@ -670,8 +670,14 @@ function animate() {
 
   // normalMat.colorWrite = true;
   sceneGrey.traverse ( function (obj) {
-  	if (obj instanceof THREE.Mesh)
-  		obj.material.colorWrite = true;
+  	if (obj instanceof THREE.Mesh) {
+		if(Array.isArray(obj.material)) {
+			obj.material.forEach(function(mat){
+				mat.colorWrite = true;
+			})
+		} else
+			obj.material.colorWrite = true;
+	}
   });
   
   renderer.render(sceneGrey, camera);
@@ -684,8 +690,14 @@ function animate() {
   // set up blockers from sceneGrey (colorWrite is disabled)
   // normalMat.colorWrite = false;
   sceneGrey.traverse ( function (obj) {
-  	if (obj instanceof THREE.Mesh)
-  		obj.material.colorWrite = false;
+  	if (obj instanceof THREE.Mesh) {
+  		if(Array.isArray(obj.material)) {
+			obj.material.forEach(function(mat){
+				mat.colorWrite = false;
+			})
+		} else
+			obj.material.colorWrite = false;
+	}
   });
   renderer.render (sceneGrey, camera);
   
