@@ -132,8 +132,7 @@ class Teapot {
 			vertexShader: document.getElementById('myVertexShader').textContent,
 			fragmentShader: document.getElementById('myFragmentShader').textContent
 		});
-		
-	 　 let mesh = new THREE.Mesh(new THREE.TeapotBufferGeometry(10),  this.teapotMaterial);
+		let mesh = new THREE.Mesh(new THREE.TeapotBufferGeometry(10),  this.teapotMaterial);
 	    mesh.position.set(0,10,0);
 	    mesh.name = figure;
 	    mesh.life = 300;

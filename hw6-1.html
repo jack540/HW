@@ -9,7 +9,7 @@
 	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
 	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
 	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
-	
+
 
 <script id="myVertexShader-mono" type="x-shader/x-vertex">
   varying vec2 vUv; 
@@ -48,44 +48,47 @@
 
 <script id="myVertexShader" type="x-shader/x-vertex">
 
-	uniform vec3 lightpos;  // world coordinate
-    varying vec3 eyelightdir;
-    varying vec3 eyenormal;
-    varying vec4 eyepos;
-
+  uniform vec3 lightpos;
+  varying float ndotl;
+  varying vec3 lightdir;
+  varying vec3 eyenorm;
+  
   void main() {
-	gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
-	eyepos = modelViewMatrix * vec4( position, 1.0);
-    vec4 eyelightpos= viewMatrix * vec4 (lightpos, 1.0);
-    eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
-    eyenormal = normalMatrix * normal;
-
+ gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
+ 
+        vec4 eyepos = modelViewMatrix * vec4 (position, 1.0);
+        vec4 lighteye = viewMatrix * vec4 (lightpos, 1.0);
+        lightdir = lighteye.xyz - eyepos.xyz;
+        eyenorm = normalMatrix * normal;
   }
+
 </script>
 <script id="myFragmentShader" type="x-shader/x-fragment">
  
-	varying vec4 eyepos;
-	varying vec3 eyelightdir;
-	varying vec3 eyenormal;
-	uniform float opacity;
 
-    uniform vec3 kcool; 
-    uniform vec3 kwarm;
-    
-	void main() {
-        float lDotn = dot (normalize (eyenormal), normalize (eyelightdir));    
-        
-        vec3 h = normalize(-normalize (eyepos.xyz) + normalize (eyelightdir));
-        float shininess = 40.;    
-        vec3 specular = pow (dot (eyenormal, h), shininess) *vec3 (1,1,1);
-        
-        float k = (1. + lDotn)/2.;
-        gl_FragColor = vec4(mix (kcool, kwarm, k) + specular, opacity); // built-in: mix url:https://thebookofshaders.com/glossary/?search=mix
-    }
+	  varying float ndotl;
+	  varying vec3 lightdir;
+	  varying vec3 eyenorm;
+	  
+	 void main() {
+	 float nn = dot (normalize(lightdir), normalize(eyenorm));
+	 if (nn > 0.8) {
+	 nn= 1.0;
+	 } else if (nn > 0.6) {
+		nn = 0.6;
+	 } else {
+		nn = 0.2;
+	 }
+		vec3 color = vec3 (255./255., 142./255., 75./255.);
+		color = color * nn;
+		gl_FragColor = vec4 (color, 1.0);
+	 }
+
 </script>
 
+
 <script>
-javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
+//javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
 
 
 var camera, scene, renderer;
@@ -287,32 +290,20 @@ function init() {
   scene0.add (plane0);
   plane0.position.set (width/2, height/2, 0);
   
-
-
-  
 }
 
 function bulidTeapot() {
 	
-		let alpha = 0.2, beta = 0.6, y = 0.4, b = 0.4;
-
-    	let kblue = new THREE.Vector3(0,0,b);
-		let kyellow = new THREE.Vector3(y,y,0);
-		let kd = new THREE.Vector3(240/255, 115/255, 26/255); //RGB
-
-		let kcool = kd.clone().multiplyScalar(alpha).add(kblue); //kcool =kd*alpha + kblue
-		let kwarm = kd.clone().multiplyScalar(beta).add(kyellow); //kwarm =kd*beta + kblue
-		
 		teapotMaterial = new THREE.ShaderMaterial({
 			uniforms: {
-				lightpos: {type: 'v3', value: new THREE.Vector3(0, 30, 20)},
-				opacity: {type: 'f', value: 1.0}, //透明度
-				kcool: {type: 'v3', value: kcool},
-				kwarm: {type: 'v3', value: kwarm},				
+			  lightpos: {
+				type: 'v3',
+				value: new THREE.Vector3(0, 30, 20)
+			  }
 			},
 			vertexShader: document.getElementById('myVertexShader').textContent,
 			fragmentShader: document.getElementById('myFragmentShader').textContent
-		});
+		  });
 		let mesh = new THREE.Mesh(new THREE.TeapotBufferGeometry(10),  teapotMaterial);
 	    mesh.position.set(-8,40,-33);
 		return mesh;
@@ -662,6 +653,7 @@ function animate() {
   angle += 0.01;
   requestAnimationFrame(animate);
   light.position.set (40*Math.cos(angle), 60, 40*Math.sin(angle));
+  teapotMaterial.uniforms.lightpos.value.copy(light.position);
   light2.copy (light);
   
   // render sceneGrey to renderTarget
@@ -671,8 +663,8 @@ function animate() {
   // normalMat.colorWrite = true;
   sceneGrey.traverse ( function (obj) {
   	if (obj instanceof THREE.Mesh) {
-		if(Array.isArray(obj.material)) {
-			obj.material.forEach(function(mat){
+		if(Array.isArray(obj.material)) { //如果遇到陣列(純喫茶)
+			obj.material.forEach(function(mat){ //把陣列中的每個material跑一次
 				mat.colorWrite = true;
 			})
 		} else
@@ -699,10 +691,30 @@ function animate() {
 			obj.material.colorWrite = false;
 	}
   });
+  
+ 
+  
   renderer.render (sceneGrey, camera);
   
   // render sceneColor
   renderer.render(sceneColor, camera);
+  
+  
+  
+  
+  
+  
+  
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
 }
 
