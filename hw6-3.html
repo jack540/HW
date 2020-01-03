@@ -11,7 +11,11 @@
 	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
 	<script src="https://raw.githack.com/mrdoob/three.js/master/examples/js/utils/BufferGeometryUtils.js"></script>
 	
+
 	
+	<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+
+
 
 
 
@@ -240,6 +244,36 @@
 	}
 </script>
 
+<script id="vs-mosaic" type="x-shader/x-vertex">
+  varying vec2 vUv; 
+  void main() { 
+      gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0); 
+      vUv = uv; 
+  }
+</script>
+<script id="fs-mosaic" type="x-shader/x-fragment">
+  uniform sampler2D texture; 
+  varying vec2 vUv; 
+  uniform float gran;
+  vec2 vUvm;
+  uniform vec2 headNDC;
+  uniform float headSize;
+
+  void main() {
+    float d = distance (headNDC, vUv);
+    float borderWidth = headSize*0.1; 
+    if (d < headSize) {
+  	  vUvm = floor (vUv/gran)*gran;     
+  		gl_FragColor = texture2D(texture, vUvm); 
+    } else if (d < headSize+borderWidth) {
+       gl_FragColor = vec4(1,0,0,1);
+    } else {
+      vUvm = vUv;
+        	gl_FragColor = texture2D(texture, vUvm); 
+    }
+   }
+</script>
+
 
 
 
@@ -256,12 +290,16 @@ var Chair = new THREE.Object3D();
 var modelName = "chair";
 var Cabinet = new THREE.Object3D();
 var modelName = "cabinet";
+var Face = new THREE.Object3D();
+var modelName = "face";
 
 
 var sceneGrey, scene0, sceneColor;
 var angle = 0, lightAngle = 0, light;
 var myToonMaterial;
 var which = 0;
+var objNameList = [];
+var subject;
 
 init();
 animate();
@@ -295,10 +333,10 @@ function init() {
 	//筆筒
 	var geometry = new THREE.CylinderGeometry( 3, 3, 15, 35, 1, true);
 	var cylinder = new THREE.Mesh( geometry, texMat );
-	cylinder.position.set(0,38,-65);
-	
+	cylinder.position.set(0,38,-45);
+
+	readModel('face', 40);
 	readModel1('lamp', 40);
-	//readModel2('pencil', 40);
 	readModel3('chair', 40);
 	readModel4('cabinet', 40);//櫃子
     
@@ -388,6 +426,7 @@ function init() {
   sceneRTT = new THREE.Scene();
   cameraRTT = new THREE.OrthographicCamera(-50, 50, 50, -50, -10, 10);
   var bs = new THREE.Mesh(new THREE.PlaneGeometry(100,100), material_shh);
+  bs.position.set(0,9,-50);
   sceneRTT.add(bs);
   
  ///////////////////////////////////////////////////////////////////
@@ -408,6 +447,7 @@ function init() {
   });  
 	subjectClone = subject.clone();
 	subjectClone.material = myToonMaterial;
+	subjectClone.position.set(0,9,0);
 	sceneRegular.add(subjectClone);  
 
 //////////////////////
@@ -464,9 +504,72 @@ function init() {
 	planeXX.position.set(-15, 32, -15);
 	sceneColor.add(planeXX);
 	
+	
+	//faceMosaic();
+	
+	
+	
 	photo();
   
 }
+
+/*function faceMosaic() {
+
+			sceneRed = new THREE.Scene();
+			readModel('face', 40);
+			objNameList.push("face");
+
+			//console.log(objNameList);
+			
+			renderTargetColor = new THREE.WebGLRenderTarget(1600,900);
+			
+			var uniforms = {
+				headNDC: {
+					type: 'v2',
+					value: null
+				},
+				texture: {
+					type: 't',
+					value: renderTargetColor.texture
+				}, 
+				gran: {
+					type: 'f',
+					value: 0
+				}
+			};
+			var vertShader = document.getElementById('vs-mosaic').innerHTML;
+			var fragShader = document.getElementById('fs-mosaic').innerHTML;
+			material_Moscaic = new THREE.ShaderMaterial({
+				uniforms: uniforms,
+				vertexShader: vertShader,
+				fragmentShader: fragShader
+			});
+			
+			plane = new THREE.Mesh (new THREE.PlaneGeometry (100, 100), material_Moscaic);
+			cameraRed = new THREE.OrthographicCamera (-50, 50, 50, -50, -100, 100);
+			sceneRed.add(plane);
+}*/
+
+/*function faceAnimate() {
+
+			subject = sceneColor.name("face");
+			let headCenter = new THREE.Vector3(0, 30, 0);
+			subject.localToWorld (headCenter);
+			let noseTip = new THREE.Vector3(0, 30, 15);
+			subject.localToWorld (noseTip);
+
+			headCenter.applyMatrix4 (camera.matrixWorldInverse).applyMatrix4 (camera.projectionMatrix);
+			material_Moscaic.uniforms.headNDC.value = new THREE.Vector2 ((headCenter.x+1)/2, (headCenter.y+1)/2);
+			noseTip.applyMatrix4 (camera.matrixWorldInverse).applyMatrix4 (camera.projectionMatrix);
+			if (noseTip.z - headCenter.z > 0) {
+				material_Moscaic.uniforms.gran.value = 0.01;
+				console.log ('face forward')
+			}  else{
+				material_Moscaic.uniforms.gran.value = 0;
+				console.log ('backward');
+			}
+}*/
+
 
 function Render() {
 
@@ -558,7 +661,7 @@ function buildDesk() {
 	var desk = new THREE.Object3D();
 	var deskMesh = new THREE.Mesh (new THREE.BoxGeometry (60,2,60), mat);
 	desk.add (deskMesh);
-	deskMesh.position.set (0,30,-50);
+	deskMesh.position.set (0,30,-30);
 	deskMesh.castShadow = true
 	deskMesh.receiveShadow = true
 	//scene.add(base);
@@ -578,6 +681,46 @@ function buildDesk() {
 	deskMesh.add( cylinder4 );
 	
 	return desk;
+}
+
+function readModel (modelName, targetSize) {
+  
+  var onProgress = function(xhr) {
+    if (xhr.lengthComputable) {
+      var percentComplete = xhr.loaded / xhr.total * 100;
+      console.log(Math.round(percentComplete, 2) + '% downloaded');
+    }
+  };
+
+  var onError = function(xhr) {};
+
+  var mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath('models/');
+  
+  mtlLoader.load(modelName+'.mtl', function(materials) {
+
+    materials.preload();
+
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath('models/');
+    objLoader.load(modelName+'.obj', function(object) {
+		
+	Face.add (unitize (object, 60));
+	Face.position.set(70,30,20);
+	Face.rotation.y = Math.PI/2;
+	Face.traverse (	//模型影子
+         function (mesh) {
+            if (mesh instanceof THREE.Mesh) {
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;}
+		 }
+    );
+	sceneGrey.add (Face);	
+
+	
+    }, onProgress, onError);
+  });
 }
 
 function readModel1 (modelName, targetSize) {
@@ -604,7 +747,7 @@ function readModel1 (modelName, targetSize) {
     objLoader.load(modelName+'.obj', function(object) {
 		
 	Lamp.add (unitize (object, 30));
-	Lamp.position.set(-20,43,-70);
+	Lamp.position.set(-20,43,-50);
 	Lamp.rotation.y = Math.PI*5/3;
 	Lamp.traverse (	//模型影子
          function (mesh) {
@@ -619,46 +762,6 @@ function readModel1 (modelName, targetSize) {
     }, onProgress, onError);
   });
 }
-
-/*function readModel2 (modelName, targetSize) {
-
-  var onProgress = function(xhr) {
-    if (xhr.lengthComputable) {
-      var percentComplete = xhr.loaded / xhr.total * 100;
-      console.log(Math.round(percentComplete, 2) + '% downloaded');
-    }
-  };
-
-  var onError = function(xhr) {};
-
-  var mtlLoader = new THREE.MTLLoader();
-  mtlLoader.setPath('models/');
-  
-  mtlLoader.load(modelName+'.mtl', function(materials) {
-
-    materials.preload();
-
-    var objLoader = new THREE.OBJLoader();
-    objLoader.setMaterials(materials);
-    objLoader.setPath('models/');
-    objLoader.load(modelName+'.obj', function(object) {
-		
-	Pencil.add (unitize (object, 20));
-	Pencil.position.set(-1,40,-65);
-	Pencil.rotation.z = Math.PI/18;
-	Pencil.traverse (	//模型影子
-         function (mesh) {
-            if (mesh instanceof THREE.Mesh) {
-              mesh.castShadow = true;
-              mesh.receiveShadow = true;}
-		 }
-    );
-	sceneGrey.add (Pencil);	
-
-		
-    }, onProgress, onError);
-  });
-}*/
 
 function readModel3 (modelName, targetSize) {
 
@@ -691,7 +794,7 @@ function readModel3 (modelName, targetSize) {
               mesh.receiveShadow = true;}
 		 }
      );
-	Chair.position.set(0,25,0);
+	Chair.position.set(0,25,10);
 	Chair.rotation.z = Math.PI/2;
 	Chair.rotation.y = Math.PI;
 	sceneGrey.add (Chair);
@@ -724,7 +827,7 @@ function readModel4 (modelName, targetSize) {
     objLoader.load(modelName+'.obj', function(object) {
 		
 	Cabinet.add (unitize (object, 80));
-	Cabinet.position.set(-140,30,-70);
+	Cabinet.position.set(-140,40,-70);
 	Cabinet.rotation.y = Math.PI;
 	Cabinet.traverse (
          function (mesh) {
@@ -911,7 +1014,7 @@ function buildModel() {
   
   
   let box = new THREE.Mesh (geometry, materialArray);
-  box.position.set(20,30,-45);
+  box.position.set(20,30,-25);
   box.name = "box";
   //box.castShadow = true
   //box.receiveShadow = true
@@ -919,11 +1022,9 @@ function buildModel() {
   return box;
 }
 
-
-
-
 function animate() {
 
+  //faceAnimate();  
   requestAnimationFrame(animate);
   
   lightAngle += 0.05;
@@ -961,7 +1062,7 @@ function animate() {
   renderer.render(sceneGrey, camera);
   
   
-  
+
 	
 	material_shh.uniforms.imageSize.value = 128;
 	
@@ -1003,7 +1104,7 @@ function animate() {
 	}
   });
   
- 
+  //renderer.render(sceneRed, cameraRed);
   
   renderer.render (sceneGrey, camera);
   
